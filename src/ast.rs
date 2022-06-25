@@ -1,5 +1,5 @@
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum VarTypes {
     Int,
     Str,
@@ -7,23 +7,26 @@ pub enum VarTypes {
     Float,
 }
 
-enum Expr {
+#[derive(Debug, Clone)]
+pub enum Expr {
     Number(i128),
-    Add(Box<Expr>, Box<Expr>),
-    Minus(Box<Expr>, Box<Expr>),
+    String(String),
+    Float(f64),
+    Addition(Box<Expr>, Box<Expr>),
     Multiply(Box<Expr>, Box<Expr>),
     Division(Box<Expr>, Box<Expr>),
+    Subtraction(Box<Expr>, Box<Expr>),
 }
 
 #[derive(Debug, Clone)]
 pub struct Var {
     name: String,
     var_type: VarTypes,
-    value: Vec<String>
+    value: Expr
 }
 
 impl Var {
-    pub fn new(name: String, var_type: VarTypes, value: Vec<String>) -> Self {
+    pub fn new(name: String, var_type: VarTypes, value: Expr) -> Self {
         Self {
             name,
             var_type,

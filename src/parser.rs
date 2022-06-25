@@ -29,6 +29,7 @@ pub struct Math {
     current: String,
     terms: Vec<String>,
     expression: Vec<String>
+
     // todo: make math with string and float work
 }
 

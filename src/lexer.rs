@@ -16,20 +16,18 @@ pub enum TokenType {
     MathOperation,
     VariableMathOperation,
     AssignmentOperator,
-    DirectMemberSelectionDOT,
+    DirectMemberSelection,
 
 
     // keywords
     Import,
     Return,
-    Def,
-    Let,
+    Fun,
     And,
     If,
     Or,
 
     // symbols
-    Arrow,
     EndLine,
     EndOfFile,
     BracketOpen,
@@ -295,18 +293,16 @@ impl Lexer {
                     unknown_length_being_used = false;
                     unknown_length = "".to_string();
                 } else if id_on {
-                    if unknown_length == "let" {
-                        self.add_special(TokenType::Let)
-                    } else if unknown_length == "and" {
-                        self.add_special(TokenType::And)
-                    } else if unknown_length == "or" {
-                        self.add_special(TokenType::Or)
-                    } else if unknown_length == "import" {
-                        self.add_special(TokenType::Import)
-                    } else if unknown_length == "return" {
-                        self.add_special(TokenType::Return)
-                    } else {
-                        self.add_identifier(unknown_length.clone());
+                    match &*unknown_length {
+                        "and" => self.add_special(TokenType::And),
+                        "or" => self.add_special(TokenType::Or),
+                        "import" =>  self.add_special(TokenType::Import),
+                        "return" => self.add_special(TokenType::Return),
+                        "if" => self.add_special(TokenType::If),
+                        "fun" => self.add_special(TokenType::Fun),
+                        "true" => self.add_special_bare(TokenType::Boolean, "true".to_string()),
+                        "false" => self.add_special_bare(TokenType::Boolean, "false".to_string()),
+                        _ => {self.add_identifier(unknown_length.clone())}
                     }
                     id_on = false;
                     unknown_length_being_used = false;
@@ -317,16 +313,11 @@ impl Lexer {
                 match self.current_char {
                     '=' => self.add_special(TokenType::AssignmentOperator),
                     '+' => self.add_special_bare(TokenType::MathOperation, "+".to_string()),
-                    '-' => if self.get_next_char().expect(&format!("didn't expect end of line, at line {} char {}", self.y, self.tok_start_y)) == '>'{
-                                self.next_char();
-                                self.add_special(TokenType::Arrow);
-                            } else {
-                            self.add_special_bare(TokenType::MathOperation, "-".to_string());
-                        }
+                    '-' => self.add_special_bare(TokenType::MathOperation, "-".to_string()),
                     '/' => self.add_special_bare(TokenType::MathOperation, "/".to_string()),
                     '*' => self.add_special_bare(TokenType::MathOperation, "*".to_string()),
                     ';' => self.add_special(TokenType::EndLine),
-                    '.' => self.add_special(TokenType::DirectMemberSelectionDOT),
+                    '.' => self.add_special(TokenType::DirectMemberSelection),
                     '(' => self.add_special(TokenType::ParenthesisOpen),
                     ')' => self.add_special(TokenType::ParenthesisClose),
                     ',' => self.add_special(TokenType::SeperatorComma),
@@ -343,18 +334,16 @@ impl Lexer {
                 panic!("what? how?")
             }
         } else if id_on {
-            if unknown_length == "let" {
-                self.add_special(TokenType::Let)
-            } else if unknown_length == "and" {
-                self.add_special(TokenType::And)
-            } else if unknown_length == "or" {
-                self.add_special(TokenType::Or)
-            } else if unknown_length == "import" {
-                self.add_special(TokenType::Import)
-            } else if unknown_length == "return" {
-                self.add_special(TokenType::Return)
-            } else {
-                self.add_identifier(unknown_length.clone());
+            match &*unknown_length {
+                "and" => self.add_special(TokenType::And),
+                "or" => self.add_special(TokenType::Or),
+                "import" => self.add_special(TokenType::Import),
+                "return" => self.add_special(TokenType::Return),
+                "if" => self.add_special(TokenType::If),
+                "fun" => self.add_special(TokenType::Fun),
+                "true" => self.add_special_bare(TokenType::Boolean, "true".to_string()),
+                "false" => self.add_special_bare(TokenType::Boolean, "false".to_string()),
+                _ => {self.add_identifier(unknown_length.clone())}
             }
         }
         self.add_special(TokenType::EndOfFile);

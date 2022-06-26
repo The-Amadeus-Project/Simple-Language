@@ -1,4 +1,4 @@
-use crate::ast::SL;
+use crate::parser::Parsed;
 
 mod lexer;
 mod parser;
@@ -8,8 +8,8 @@ fn main() {
     let file = "main.sl";
     let content= std::fs::read_to_string(file).expect("couldnt open file");
     let mut the_parser = parser::Parser::new();
-    let parsed = the_parser.parse_text(content);
-    for part in parsed {
-        println!("{:?}", part)
+    let return_parsed = the_parser.parse_text(content);
+    if let Parsed::Program(parsed) = return_parsed {
+        println!("{:?}", parsed);
     }
 }

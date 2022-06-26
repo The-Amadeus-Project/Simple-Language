@@ -1,4 +1,3 @@
-use std::fmt::format;
 use crate::ast::{Expr, SL, Var, VarTypes};
 use crate::lexer::{Lexer, Token, TokenType};
 
@@ -24,9 +23,9 @@ fn data_token_type_to_types(from: TokenType) -> Option<VarTypes>{
 
 
 pub struct Math {
-    given: Vec<String>,
+    given: Vec<Token>,
     ind: i32,
-    current: String,
+    current: Token,
     terms: Vec<String>,
     expression: Vec<String>
 
@@ -38,7 +37,7 @@ impl Math {
         Self {
             given: vec![],
             ind: -1,
-            current: "".to_string(),
+            current: Token::new(TokenType::NullForParser, "".to_string()),
             terms: vec!["*".to_string(), "/".to_string()],
             expression: vec!["+".to_string(), "-".to_string()]
         }
@@ -53,14 +52,30 @@ impl Math {
         }
     }
     fn factor(&mut self) -> Expr {
-        Expr::Number(self.current.parse::<i128>().expect("invalid?"))
+        if self.current.token_type == TokenType::String {
+            Expr::String(self.current.value.clone())
+        } else if self.current.token_type == TokenType::Boolean {
+            if self.current.value == "true" {
+                Expr::Bool(true)
+            } else if self.current.value == "false" {
+                Expr::Bool(false)
+            } else {
+                panic!("How? {:?}", self.current)
+            }
+        } else if self.current.token_type == TokenType::FloatingPoint {
+            Expr::Float(self.current.value.parse::<f64>().unwrap())
+        } else if self.current.token_type == TokenType::Integer {
+            Expr::Integer(self.current.value.parse::<i128>().unwrap())
+        } else {
+            panic!("Invalid type {:?}", self.current)
+        }
     }
     fn term(&mut self) -> Expr {
         let mut left = self.factor();
         self.next();
 
-        while self.terms.contains(&self.current) {
-            let operation = self.current.clone();
+        while self.terms.contains(&self.current.value) {
+            let operation = self.current.value.clone();
             self.next();
             let right = self.factor();
             let result = self.next();
@@ -79,8 +94,8 @@ impl Math {
     fn expression(&mut self) -> Expr {
         let mut left = self.term();
 
-        while self.expression.contains(&self.current) {
-            let operation = self.current.clone();
+        while self.expression.contains(&self.current.value) {
+            let operation = self.current.value.clone();
             self.next();
             let right = self.term();
             let result = self.next();
@@ -96,7 +111,7 @@ impl Math {
         }
         left
     }
-    pub fn parse(&mut self, given: Vec<String>) -> Expr {
+    pub fn parse(&mut self, given: Vec<Token>) -> Expr {
         self.given = given;
         self.next();
         self.expression()
@@ -112,7 +127,7 @@ pub struct Parser {
     current_token: Token,
     to_parse: Vec<Token>,
     defined_names: Vec<String>,
-    whole_program: Sl
+    whole_program: Vec<SL>
 }
 
 impl Parser {
@@ -180,18 +195,18 @@ impl Parser {
                             self.error(format!("Expected Operation got '{:?}'", self.current_token.token_type))
                         }
                         expect_op = true;
-                        values.push(self.current_token.value.clone())
+                        values.push(self.current_token.clone())
                     } else if self.current_token.token_type == TokenType::MathOperation {
                         if !expect_op {
                             self.error(format!("Expected Data Type got '{:?}'", self.current_token.token_type))
                         }
                         expect_op = false;
-                        values.push(self.current_token.value.clone())
+                        values.push(self.current_token.clone())
                     }
                 }
                 let mut math = Math::new();
                 let expr_parsed =  math.parse(values);
-                self.whole_program.push(SL::VariableAssignment(var_name, var_type, expr_parsed))
+                self.whole_program.push(SL::Var(Var::new(var_name, var_type, expr_parsed)))
 
             }
         }

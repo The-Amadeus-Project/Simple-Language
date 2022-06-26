@@ -1,5 +1,13 @@
-use crate::ast::{Expr, SL, Var, VarTypes};
 use crate::lexer::{Lexer, Token, TokenType};
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum VarTypes {
+    Int,
+    Str,
+    Bool,
+    Float,
+}
+
 
 fn str_to_types(from: String) -> Option<VarTypes>{
     match &*from {
@@ -21,103 +29,33 @@ fn data_token_type_to_types(from: TokenType) -> Option<VarTypes>{
     }
 }
 
-
-pub struct Math {
-    given: Vec<Token>,
-    ind: i32,
-    current: Token,
-    terms: Vec<String>,
-    expression: Vec<String>
-
-    // todo: make math with string and float work
+#[derive(Debug, Clone)]
+pub struct ParsedVar {
+    value: Vec<Token>,
+    name: String,
+    var_type: VarTypes
 }
 
-impl Math {
-    pub fn new() -> Self {
+impl ParsedVar {
+    pub fn new(name: String, var_type: VarTypes, value: Vec<Token>) -> Self {
         Self {
-            given: vec![],
-            ind: -1,
-            current: Token::new(TokenType::NullForParser, "".to_string()),
-            terms: vec!["*".to_string(), "/".to_string()],
-            expression: vec!["+".to_string(), "-".to_string()]
+            value,
+            name,
+            var_type
         }
-    }
-    fn next(&mut self) -> bool {
-        self.ind += 1;
-        if self.ind >= self.given.len() as i32 {
-            false
-        } else {
-            self.current = self.given[self.ind as usize].clone();
-            true
-        }
-    }
-    fn factor(&mut self) -> Expr {
-        if self.current.token_type == TokenType::String {
-            Expr::String(self.current.value.clone())
-        } else if self.current.token_type == TokenType::Boolean {
-            if self.current.value == "true" {
-                Expr::Bool(true)
-            } else if self.current.value == "false" {
-                Expr::Bool(false)
-            } else {
-                panic!("How? {:?}", self.current)
-            }
-        } else if self.current.token_type == TokenType::FloatingPoint {
-            Expr::Float(self.current.value.parse::<f64>().unwrap())
-        } else if self.current.token_type == TokenType::Integer {
-            Expr::Integer(self.current.value.parse::<i128>().unwrap())
-        } else {
-            panic!("Invalid type {:?}", self.current)
-        }
-    }
-    fn term(&mut self) -> Expr {
-        let mut left = self.factor();
-        self.next();
-
-        while self.terms.contains(&self.current.value) {
-            let operation = self.current.value.clone();
-            self.next();
-            let right = self.factor();
-            let result = self.next();
-            if operation == "*" {
-                left = Expr::Multiply(Box::new(right), Box::new(left))
-            } else {
-                left = Expr::Division(Box::new(right), Box::new(left))
-            }
-            if !result {
-                break
-            }
-
-        }
-        left
-    }
-    fn expression(&mut self) -> Expr {
-        let mut left = self.term();
-
-        while self.expression.contains(&self.current.value) {
-            let operation = self.current.value.clone();
-            self.next();
-            let right = self.term();
-            let result = self.next();
-            if operation == "+" {
-                left = Expr::Addition(Box::new(right), Box::new(left))
-            } else {
-                left = Expr::Subtraction(Box::new(right), Box::new(left))
-            }
-            if !result {
-                break
-            }
-
-        }
-        left
-    }
-    pub fn parse(&mut self, given: Vec<Token>) -> Expr {
-        self.given = given;
-        self.next();
-        self.expression()
-
     }
 }
+
+#[derive(Debug, Clone)]
+pub enum Parsed {
+    Var(ParsedVar),
+    Program(Vec<Parsed>),
+    // If(),
+    // ElseIf(),
+    // Else(),
+}
+
+
 
 
 pub struct Parser {
@@ -127,7 +65,7 @@ pub struct Parser {
     current_token: Token,
     to_parse: Vec<Token>,
     defined_names: Vec<String>,
-    whole_program: Vec<SL>
+    scope: Vec<Parsed>
 }
 
 impl Parser {
@@ -139,7 +77,7 @@ impl Parser {
             current_token: Token::new(TokenType::NullForParser, "".to_string()),
             to_parse: vec![],
             defined_names: vec![],
-            whole_program: vec![]
+            scope: vec![Parsed::Program(vec![])]
         }
     }
     fn next_token(&mut self) -> bool {
@@ -151,14 +89,22 @@ impl Parser {
             true
         }
     }
-    pub fn parse_text(&mut self, text: String) -> Vec<SL>{
+    pub fn parse_text(&mut self, text: String) -> Parsed{
         self.to_parse = self.lexer.lex_text(text);
         self.parse()
     }
     fn error(&self, error: String){
         panic!("{}, at line {} char {}", error, self.current_token.y, self.current_token.x)
     }
-    fn parse(&mut self) -> Vec<SL>{
+    fn add_var(&mut self, var_name: String, var_type: VarTypes, values: Vec<Token>){
+        let ind = self.scope.len() - 1;
+        let d = &mut self.scope[ind];
+        match d {
+            Parsed::Program(sd) => sd.push(Parsed::Var(ParsedVar::new(var_name, var_type, values))),
+            _ => {unimplemented!()}
+        }
+    }
+    fn parse(&mut self) -> Parsed {
         let types = vec!["int".to_string(), "str".to_string(), "bool".to_string(), "float".to_string()];
         while self.run {
             if !self.next_token() {
@@ -186,10 +132,10 @@ impl Parser {
                     } else if self.current_token.token_type == TokenType::EndOfFile {
                         self.error(format!("Expected end of line got '{:?}' instead", &self.current_token.token_type))
                     } else if self.current_token.is_data_type() {
-                        let converted = data_token_type_to_types(self.current_token.token_type.clone()).unwrap();
-                        if converted != var_type {
-                            self.error(format!("Expected Data type of '{:?}' got '{:?}' instead", var_type, converted))
-                        }
+                        // let converted = data_token_type_to_types(self.current_token.token_type.clone()).unwrap();
+                        // if converted != var_type {
+                        //     self.error(format!("Expected Data type of '{:?}' got '{:?}' instead", var_type, converted))
+                        // }
 
                         if expect_op {
                             self.error(format!("Expected Operation got '{:?}'", self.current_token.token_type))
@@ -204,12 +150,11 @@ impl Parser {
                         values.push(self.current_token.clone())
                     }
                 }
-                let mut math = Math::new();
-                let expr_parsed =  math.parse(values);
-                self.whole_program.push(SL::Var(Var::new(var_name, var_type, expr_parsed)))
+                self.add_var(var_name, var_type, values)
 
             }
         }
-        self.whole_program.clone()
+        let last_ind = self.scope.len() - 1;
+        self.scope[last_ind].clone()
     }
 }

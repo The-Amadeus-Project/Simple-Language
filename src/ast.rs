@@ -8,8 +8,6 @@ pub struct Math {
     current: Token,
     terms: Vec<String>,
     expression: Vec<String>
-
-    // todo: make math with string and float work
 }
 
 impl Math {

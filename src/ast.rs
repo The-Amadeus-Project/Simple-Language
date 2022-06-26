@@ -9,9 +9,11 @@ pub enum VarTypes {
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Number(i128),
     String(String),
     Float(f64),
+    Integer(i128),
+    Bool(bool),
+
     Addition(Box<Expr>, Box<Expr>),
     Multiply(Box<Expr>, Box<Expr>),
     Division(Box<Expr>, Box<Expr>),

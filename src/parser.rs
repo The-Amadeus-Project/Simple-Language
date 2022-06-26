@@ -91,6 +91,11 @@ impl Parser {
     }
     pub fn parse_text(&mut self, text: String) -> Parsed{
         self.to_parse = self.lexer.lex_text(text);
+        println!("--------------------------------------------------------");
+        for tok in &self.to_parse {
+            println!("{:?}-", tok)
+        }
+        println!("--------------------------------------------------------");
         self.parse()
     }
     fn error(&self, error: String){
@@ -151,7 +156,14 @@ impl Parser {
                     }
                 }
                 self.add_var(var_name, var_type, values)
-
+            }
+            else if self.current_token.token_type == TokenType::If { unimplemented!() }
+            else if self.current_token.token_type == TokenType::Else { unimplemented!() }
+            else if self.current_token.token_type == TokenType::Fun { unimplemented!() }
+            else if self.current_token.token_type == TokenType::Identifier { unimplemented!() }
+            else if self.current_token.token_type == TokenType::EndOfFile { }
+            else {
+                self.error(format!("Unknown! {:?}", self.current_token))
             }
         }
         let last_ind = self.scope.len() - 1;

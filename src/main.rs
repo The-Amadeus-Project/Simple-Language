@@ -1,3 +1,4 @@
+use crate::lexer::lexer_test;
 use crate::parser::Parsed;
 
 mod lexer;
@@ -5,6 +6,7 @@ mod parser;
 mod ast;
 
 fn main() {
+    lexer_test();
     let file = "main.sl";
     let content= std::fs::read_to_string(file).expect("couldnt open file");
     let mut the_parser = parser::Parser::new();

@@ -1,1 +1,1 @@
-int name 10;
+str name "asd";

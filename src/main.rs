@@ -1,5 +1,3 @@
-extern crate core;
-
 use crate::ast::SL;
 
 mod lexer;

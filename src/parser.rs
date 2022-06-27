@@ -19,38 +19,21 @@ fn str_to_types(from: String) -> Option<VarTypes>{
     }
 }
 
-fn data_token_type_to_types(from: TokenType) -> Option<VarTypes>{
-    match from {
+pub fn data_token_type_to_types(from: &TokenType) -> Option<VarTypes> {
+    match *from {
         TokenType::Integer => Some(VarTypes::Int),
         TokenType::String => Some(VarTypes::Str),
         TokenType::Boolean => Some(VarTypes::Bool),
-       TokenType::FloatingPoint => Some(VarTypes::Float),
-        _ => {None}
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ParsedVar {
-    value: Vec<Token>,
-    name: String,
-    var_type: VarTypes
-}
-
-impl ParsedVar {
-    pub fn new(name: String, var_type: VarTypes, value: Vec<Token>) -> Self {
-        Self {
-            value,
-            name,
-            var_type
-        }
+        TokenType::FloatingPoint => Some(VarTypes::Float),
+        _ => { None }
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum Parsed {
-    Var(ParsedVar),
+    Var(Token, VarTypes, Vec<Token>),
     Program(Vec<Parsed>),
-    // If(),
+    If(Vec<Parsed>, Vec<String>, (u32, u32)),
     // ElseIf(),
     // Else(),
 }
@@ -101,11 +84,25 @@ impl Parser {
     fn error(&self, error: String){
         panic!("{}, at line {} char {}", error, self.current_token.y, self.current_token.x)
     }
-    fn add_var(&mut self, var_name: String, var_type: VarTypes, values: Vec<Token>){
+    fn add_var(&mut self, var_name: Token, var_type: VarTypes, values: Vec<Token>){
         let ind = self.scope.len() - 1;
         let d = &mut self.scope[ind];
         match d {
-            Parsed::Program(sd) => sd.push(Parsed::Var(ParsedVar::new(var_name, var_type, values))),
+            Parsed::Program(sd) => sd.push(Parsed::Var(var_name, var_type, values)),
+            Parsed::If(if_block, ..) => if_block.push(Parsed::Var(var_name, var_type, values)),
+            _ => {unimplemented!()}
+        }
+    }
+    fn add_if(&mut self, condition: Vec<String>, loc: (u32, u32)){
+        self.scope.push(Parsed::If(vec![], condition, loc))
+    }
+    fn un_scope(&mut self) {
+        let block = self.scope.pop().expect("weird error pop top");
+        let ind = self.scope.len() - 1;
+        let d = &mut self.scope[ind];
+        match d {
+            Parsed::Program(sd) => sd.push(block),
+            Parsed::If(if_block, ..) => if_block.push(block),
             _ => {unimplemented!()}
         }
     }
@@ -126,47 +123,62 @@ impl Parser {
                 if !self.next_token() || self.current_token.token_type != TokenType::Identifier {
                     self.error(format!("Expected a variable name got '{:?}' instead", &self.current_token.token_type))
                 }
-                let var_name = self.current_token.value.clone();
+                let var_name = self.current_token.clone();
 
                 let mut values = vec![];
-                let mut expect_op = false;
                 loop {
                     self.next_token();
                     if self.current_token.token_type == TokenType::EndLine {
                         break
                     } else if self.current_token.token_type == TokenType::EndOfFile {
                         self.error(format!("Expected end of line got '{:?}' instead", &self.current_token.token_type))
-                    } else if self.current_token.is_data_type() {
-                        // let converted = data_token_type_to_types(self.current_token.token_type.clone()).unwrap();
-                        // if converted != var_type {
-                        //     self.error(format!("Expected Data type of '{:?}' got '{:?}' instead", var_type, converted))
-                        // }
-
-                        if expect_op {
-                            self.error(format!("Expected Operation got '{:?}'", self.current_token.token_type))
-                        }
-                        expect_op = true;
-                        values.push(self.current_token.clone())
-                    } else if self.current_token.token_type == TokenType::MathOperation {
-                        if !expect_op {
-                            self.error(format!("Expected Data Type got '{:?}'", self.current_token.token_type))
-                        }
-                        expect_op = false;
+                    } else {
                         values.push(self.current_token.clone())
                     }
+
+                }
+                if values.len() == 0 {
+                    println!("WANING! uninitialized but declared {}", var_name.value)
                 }
                 self.add_var(var_name, var_type, values)
             }
-            else if self.current_token.token_type == TokenType::If { unimplemented!() }
+            else if self.current_token.token_type == TokenType::If {
+                let if_pos = (self.current_token.x, self.current_token.y);
+
+                let mut condition = vec![];
+                loop {
+                    self.next_token();
+                    if self.current_token.token_type == TokenType::EndOfFile {
+                        self.error("Expected Arguments".to_string());
+                    } else if self.current_token.token_type == TokenType::CurlyBracketOpen {
+                        break
+                    } else {
+                        condition.push(self.current_token.true_value())
+                    }
+                }
+                self.add_if(condition, if_pos);
+            }
             else if self.current_token.token_type == TokenType::Else { unimplemented!() }
             else if self.current_token.token_type == TokenType::Fun { unimplemented!() }
             else if self.current_token.token_type == TokenType::Identifier { unimplemented!() }
+            else if self.current_token.token_type == TokenType::CurlyBracketClose {
+                self.un_scope();
+            }
             else if self.current_token.token_type == TokenType::EndOfFile { }
             else {
                 self.error(format!("Unknown! {:?}", self.current_token))
             }
         }
-        let last_ind = self.scope.len() - 1;
-        self.scope[last_ind].clone()
+        if self.scope.len() > 1 {
+            let ind = self.scope.len() - 1;
+            let last = &self.scope[ind];
+            let mut pos = (0, 0);
+            match last {
+                Parsed::If(.., loc) => pos = *loc,
+                _ => unimplemented!()
+            }
+            panic!("unclosed Block, at line {} char {}", pos.1, pos.0)
+        }
+        self.scope[0].clone()
     }
 }

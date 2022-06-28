@@ -32,6 +32,7 @@ pub enum TokenType {
     // symbols
     EndLine,
     EndOfFile,
+    AssignmentArrow,
     BracketOpen,
     BracketClose,
     CurlyBracketOpen,
@@ -355,11 +356,14 @@ impl Lexer {
                         {
                             let next = self.get_next_char();
                             if !next.is_some() {
-                                panic!("Expected Continuation at line {} char {}", self.y, self.tok_start_y);
+                                panic!("Expected Continuation at line {} char {}", self.tok_start_y, self.tok_start_x);
                             }
                             let next_char = next.unwrap();
                             if next_char == '=' {
                                 self.add_special_bare(TokenType::ComparisonOperation, "<=".to_string());
+                                self.next_char();
+                            } else if next_char == '-' {
+                                self.add_special(TokenType::AssignmentArrow);
                                 self.next_char();
                             } else {
                                 self.add_special_bare(TokenType::ComparisonOperation, "<".to_string())
@@ -369,7 +373,10 @@ impl Lexer {
                     '}' => self.add_special(TokenType::CurlyBracketClose),
                     '[' => self.add_special(TokenType::BracketOpen),
                     ']' => self.add_special(TokenType::BracketClose),
-                    _ => {}
+                    ' ' => {},
+                    '\n' => {},
+                    '\t' => {},
+                    _ => {unimplemented!("not added -> {} <-, at line {} char {}", self.current_char, self.tok_start_y, self.tok_start_x)}
                 }
             }
         }

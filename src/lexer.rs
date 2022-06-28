@@ -326,7 +326,7 @@ impl Lexer {
                                 self.add_special_bare(TokenType::ComparisonOperation, "==".to_string());
                                 self.next_char();
                             } else {
-                                self.add_special(TokenType::AssignmentOperator)
+                               panic!("Please use assignment arrow '<-',  at line {} char {}", self.y, self.tok_start_y);
                             }
                         },
                     '+' => self.add_special_bare(TokenType::MathOperation, "+".to_string()),

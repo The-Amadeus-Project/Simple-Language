@@ -44,6 +44,11 @@ impl Checker {
                     panic!("Expected a '{:?}' got '{:?}', at line {}, char {}", var_type, val.token_type, val.y, val.x)
                 }
             } else if val.token_type == TokenType::MathOperation {
+                if val.value != "+" && var_type == VarTypes::Str {
+                    panic!("addition is only allowed for strings types, at line {} char {}", val.y, val.x)
+                } else if var_type == VarTypes::Bool {
+                    panic!("Math operation not allowed for boolean types at line {} char {}", val.y, val.x)
+                }
                 if !exp_op {
                     panic!("Expected DataType got '{}' instead, at line {} char {}", val.true_value(), val.y, val.x);
                 }
@@ -55,7 +60,7 @@ impl Checker {
                     }
                     exp_op = true;
                     let reference = self.defined_var.get(&val.value).unwrap();
-                    if var_type != *reference {
+                    if var_type != reference.clone() {
                         panic!("Expected a '{:?}' got '{:?}', at line {}, char {}", var_type, val.token_type, val.y, val.x)
                     }
                 } else if self.removed.contains(&val.value){
@@ -87,11 +92,12 @@ impl Checker {
                 _ => unimplemented!()
             }
         }
+        unimplemented!()
     }
 
     fn individual_check(&mut self, to_check: Parsed) -> (String, u32) {
         match to_check {
-            Parsed::Var(name, var_type, values) => {
+            Parsed::VariableAssignment(name, var_type, values) => {
                 let ret = self.var_check(name, var_type, values);
                 self.defined_var.insert(ret.0.clone(), ret.1);
                 return (ret.0, 1)

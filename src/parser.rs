@@ -31,7 +31,7 @@ pub fn data_token_type_to_types(from: &TokenType) -> Option<VarTypes> {
 
 #[derive(Debug, Clone)]
 pub enum Parsed {
-    Var(Token, VarTypes, Vec<Token>),
+    VariableAssignment(Token, VarTypes, Vec<Token>),
     Program(Vec<Parsed>),
     If(Vec<Parsed>, Vec<String>, (u32, u32)),
     // ElseIf(),
@@ -88,8 +88,8 @@ impl Parser {
         let ind = self.scope.len() - 1;
         let d = &mut self.scope[ind];
         match d {
-            Parsed::Program(sd) => sd.push(Parsed::Var(var_name, var_type, values)),
-            Parsed::If(if_block, ..) => if_block.push(Parsed::Var(var_name, var_type, values)),
+            Parsed::Program(sd) => sd.push(Parsed::VariableAssignment(var_name, var_type, values)),
+            Parsed::If(if_block, ..) => if_block.push(Parsed::VariableAssignment(var_name, var_type, values)),
             _ => {unimplemented!()}
         }
     }
@@ -124,6 +124,10 @@ impl Parser {
                     self.error(format!("Expected a variable name got '{:?}' instead", &self.current_token.token_type))
                 }
                 let var_name = self.current_token.clone();
+
+                if !self.next_token() || self.current_token.token_type != TokenType::AssignmentArrow {
+                    self.error(format!("Expected a variable assignment operator '<-' got '{:?}' instead", &self.current_token.token_type))
+                }
 
                 let mut values = vec![];
                 loop {

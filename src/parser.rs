@@ -9,7 +9,7 @@ pub enum VarTypes {
 }
 
 
-fn str_to_types(from: String) -> Option<VarTypes>{
+pub fn str_to_types(from: String) -> Option<VarTypes>{
     match &*from {
         "int" => Some(VarTypes::Int),
         "str" => Some(VarTypes::Str),
@@ -32,7 +32,9 @@ pub fn data_token_type_to_types(from: &TokenType) -> Option<VarTypes> {
 #[derive(Debug, Clone)]
 pub enum Parsed {
     VariableAssignment(Token, VarTypes, Vec<Token>),
+    VariableReassignment(Token, Vec<Token>),
     Program(Vec<Parsed>),
+    FuncCall(Token, Vec<Token>),
     If(Vec<Parsed>, Vec<String>, (u32, u32)),
     // ElseIf(),
     // Else(),
@@ -84,14 +86,23 @@ impl Parser {
     fn error(&self, error: String){
         panic!("{}, at line {} char {}", error, self.current_token.y, self.current_token.x)
     }
-    fn add_var(&mut self, var_name: Token, var_type: VarTypes, values: Vec<Token>){
+    fn add_to_top_of_stack(&mut self, to_push: Parsed){
         let ind = self.scope.len() - 1;
         let d = &mut self.scope[ind];
         match d {
-            Parsed::Program(sd) => sd.push(Parsed::VariableAssignment(var_name, var_type, values)),
-            Parsed::If(if_block, ..) => if_block.push(Parsed::VariableAssignment(var_name, var_type, values)),
+            Parsed::Program(sd) => sd.push(to_push),
+            Parsed::If(if_block, ..) => if_block.push(to_push),
             _ => {unimplemented!()}
         }
+    }
+    fn add_var(&mut self, var_name: Token, var_type: VarTypes, values: Vec<Token>){
+        self.add_to_top_of_stack(Parsed::VariableAssignment(var_name, var_type, values))
+    }
+    fn reassign_var(&mut self, var_name: Token, values: Vec<Token>){
+        self.add_to_top_of_stack(Parsed::VariableReassignment(var_name, values))
+    }
+    fn add_func_call(&mut self, func_name: Token, args: Vec<Token>){
+        self.add_to_top_of_stack(Parsed::FuncCall(func_name, args))
     }
     fn add_if(&mut self, condition: Vec<String>, loc: (u32, u32)){
         self.scope.push(Parsed::If(vec![], condition, loc))
@@ -108,6 +119,10 @@ impl Parser {
     }
     fn parse(&mut self) -> Parsed {
         let types = vec!["int".to_string(), "str".to_string(), "bool".to_string(), "float".to_string()];
+        let allowed_in_var_func_call = vec![
+            TokenType::Identifier, TokenType::MathOperation, TokenType::ParenthesisClose,
+            TokenType::ComparisonOperation
+        ];
         while self.run {
             if !self.next_token() {
                 self.run = false;
@@ -136,8 +151,10 @@ impl Parser {
                         break
                     } else if self.current_token.token_type == TokenType::EndOfFile {
                         self.error(format!("Expected end of line got '{:?}' instead", &self.current_token.token_type))
-                    } else {
+                    } else if self.current_token.is_data_type() || allowed_in_var_func_call.contains(&self.current_token.token_type) {
                         values.push(self.current_token.clone())
+                    } else {
+                        self.error(format!("Expected Values got {:?}", self.current_token.token_type))
                     }
 
                 }
@@ -164,8 +181,59 @@ impl Parser {
             }
             else if self.current_token.token_type == TokenType::Else { unimplemented!() }
             else if self.current_token.token_type == TokenType::Fun { unimplemented!() }
-            else if self.current_token.token_type == TokenType::Identifier { unimplemented!() }
+            else if self.current_token.token_type == TokenType::Identifier {
+                let name = self.current_token.clone();
+                if self.next_token() && self.current_token.token_type == TokenType::ParenthesisOpen {
+                    let mut func_args = vec![];
+                    let mut calls = 0;
+                    loop {
+                        self.next_token();
+                        if self.current_token.token_type == TokenType::ParenthesisClose && calls == 0 {
+                            break
+                        } else if self.current_token.token_type == TokenType::ParenthesisClose {
+                            func_args.push(self.current_token.clone());
+                            calls -= 1
+                        } else if self.current_token.token_type == TokenType::ParenthesisOpen {
+                            calls += 1;
+                            func_args.push(self.current_token.clone());
+                            unimplemented!()
+                        } else if self.current_token.is_data_type() || allowed_in_var_func_call.contains(&self.current_token.token_type) ||
+                            self.current_token.token_type == TokenType::SeperatorComma {
+                            func_args.push(self.current_token.clone());
+                        } else {
+                            self.error(format!("Expected arguments got {:?}", self.current_token.token_type))
+                        }
+                    }
+                    if !self.next_token() || self.current_token.token_type != TokenType::EndLine {
+                        self.error(format!("Expected {:?} got {:?}", TokenType::EndLine,  self.current_token.token_type))
+                    }
+                    self.add_func_call(name, func_args)
+                }
+                else if self.current_token.token_type == TokenType::AssignmentArrow {
+                     let mut values = vec![];
+                    loop {
+                        self.next_token();
+                        if self.current_token.token_type == TokenType::EndLine {
+                            break
+                        } else if self.current_token.token_type == TokenType::EndOfFile {
+                            self.error(format!("Expected end of line got '{:?}' instead", &self.current_token.token_type))
+                        } else if self.current_token.is_data_type() || allowed_in_var_func_call.contains(&self.current_token.token_type) {
+                            values.push(self.current_token.clone())
+                        } else {
+                            self.error(format!("Expected Values got {:?}", self.current_token.token_type))
+                        }
+
+                    }
+                    if values.len() == 0 {
+                        self.error("Expected values".to_string());
+                    }
+                    self.reassign_var(name, values)
+                }
+            }
             else if self.current_token.token_type == TokenType::CurlyBracketClose {
+                if self.scope.len() == 1 {
+                    self.error(format!("Unexpected `{}`", self.current_token.value))
+                }
                 self.un_scope();
             }
             else if self.current_token.token_type == TokenType::EndOfFile { }

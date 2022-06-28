@@ -1,2 +1,4 @@
 # Simple-Language
-Becuase im learning lang dev
+Because im learning lang dev
+
+# check design.md for syntax and choices

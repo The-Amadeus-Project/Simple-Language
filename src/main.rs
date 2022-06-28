@@ -7,6 +7,7 @@ mod ast;
 mod check;
 mod sl;
 mod error;
+mod interpreter;
 
 fn main() {
     sl::interpret("main.sl".to_string())

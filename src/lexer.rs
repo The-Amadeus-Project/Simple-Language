@@ -329,6 +329,20 @@ impl Lexer {
                                panic!("Please use assignment arrow '<-',  at line {} char {}", self.y, self.tok_start_y);
                             }
                         },
+                    '!' =>
+                        {
+                            let next = self.get_next_char();
+                            if !next.is_some() {
+                                panic!("Expected Continuation at line {} char {}", self.y, self.tok_start_y);
+                            }
+                            let next_char = next.unwrap();
+                            if next_char == '=' {
+                                self.add_special_bare(TokenType::ComparisonOperation, "!=".to_string());
+                                self.next_char();
+                            } else {
+                                panic!("Unexpected '{}',  at line {} char {}", self.current_char, self.y, self.tok_start_y);
+                            }
+                        },
                     '+' => self.add_special_bare(TokenType::MathOperation, "+".to_string()),
                     '-' => self.add_special_bare(TokenType::MathOperation, "-".to_string()),
                     '/' => self.add_special_bare(TokenType::MathOperation, "/".to_string()),

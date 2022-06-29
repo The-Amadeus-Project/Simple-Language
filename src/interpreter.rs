@@ -6,7 +6,16 @@ use crate::lexer::{Token, TokenType};
 use crate::parser::VarTypes;
 
 
+fn substring(str: String, start: i32, end: i32) ->  Option<String>
+{
+    if end <= start
+    {
+        return None;
+    }
+    let ss = (&str[(start as usize)..(end as usize)]).to_string();
+    Option::from(ss)
 
+}
 
 #[derive(PartialEq, Debug, Clone)]
 enum Value {
@@ -31,7 +40,7 @@ impl Interpreter {
                 program,
                 defined_var: HashMap::new(),
                 defined_func: HashMap::new(),
-                built_in_func: vec!["iprint".to_string(), "fprint".to_string(), "bprint".to_string(), "sprint".to_string(), ],
+                built_in_func: vec!["print".to_string(), ],
                 defined_struct: HashMap::new()
             }
         } else {
@@ -54,7 +63,7 @@ impl Interpreter {
             } else if self.defined_var.contains_key(&tok.value){
                 let d = self.defined_var.get(&tok.value).unwrap().1.clone();
                 match d {
-                    Value::String(val) => to_eval += &val,
+                    Value::String(val) => to_eval += &*("\"".to_string() + &val + &*"\"".to_string()),
                     Value::Int(val) => to_eval += &val.to_string(),
                     Value::Float(val) => to_eval += &val.to_string(),
                     Value::Bool(val) => to_eval += &val.to_string(),
@@ -65,57 +74,54 @@ impl Interpreter {
         }
         eval::eval(&to_eval).expect("sir! you got a shitty error").to_string()
     }
-    fn var_reassignment(&mut self, var_name: Token, var_value: Vec<Token>){
-        let mut reassign = self.defined_var.remove(&var_name.value).unwrap();
-        self.defined_var.insert(var_name.value.clone(), reassign.clone());
-        let var_type = reassign.0.clone();
+    fn var_assign_template(&mut self, var_name: Token, var_type: VarTypes, var_value: Vec<Token>){
         match var_type {
             VarTypes::Str => {
-                unimplemented!()
+                let ret_eval = self.evaluate(var_value).parse::<String>().expect("sir! you got another shitty error");
+                self.defined_var.insert(var_name.value, (var_type, Value::String(substring(ret_eval.clone(), 1, (&ret_eval.len() - 1) as i32).unwrap())));
             },
             VarTypes::Int => {
                 let ret_eval = self.evaluate(var_value).parse::<i128>().expect("sir! you got another shitty error");
                 self.defined_var.insert(var_name.value, (var_type, Value::Int(ret_eval)));
             },
             VarTypes::Float => {
-                unimplemented!()
+                let ret_eval = self.evaluate(var_value).parse::<f64>().expect("sir! you got another shitty error");
+                self.defined_var.insert(var_name.value, (var_type, Value::Float(ret_eval)));
             },
             VarTypes::Bool => {
+                let ret_eval = self.evaluate(var_value).parse::<bool>().expect("sir! you got another shitty error");
+                self.defined_var.insert(var_name.value, (var_type, Value::Bool(ret_eval)));
+            },
+            VarTypes::Struct => {
                 unimplemented!()
-            }
+            },
         }
+    }
+    fn var_reassignment(&mut self, var_name: Token, var_value: Vec<Token>){
+        let mut reassign = self.defined_var.get(&var_name.value).unwrap().clone();
+        let var_type = reassign.0.clone();
+        self.var_assign_template(var_name, var_type, var_value)
     }
 
     fn var_assignment(&mut self, var_name: Token, var_type: VarTypes, var_value: Vec<Token>){
-        match var_type {
-            VarTypes::Str => {
-                unimplemented!()
-            },
-            VarTypes::Int => {
-                let ret_eval = self.evaluate(var_value).parse::<i128>().expect("sir! you got another shitty error");
-                self.defined_var.insert(var_name.value, (var_type, Value::Int(ret_eval)));
-            },
-            VarTypes::Float => {
-                unimplemented!()
-            },
-            VarTypes::Bool => {
-                unimplemented!()
-            }
-        }
+        self.var_assign_template(var_name, var_type, var_value)
     }
     fn built_in_funcs(&mut self, func_name: Token, func_args: Vec<Token>) -> Option<Value>{
         match &*func_name.value {
-            "iprint" => {
+            "out" => {
                 let arg = func_args[0 as usize].clone();
-                if arg.is_integer(){
+                if arg.is_data_type(){
                     println!("{}", arg.value)
                 } else if arg.token_type == TokenType::Identifier {
                     let arg_name = arg.value;
                     if self.defined_var.contains_key(&arg_name){
                         let referred = self.defined_var.get(&arg_name).unwrap();
-                        match referred.1 {
+                        match &referred.1 {
                             Value::Int(val) => println!("{}", val),
-                            _ => panic!("type checker failed me")
+                            Value::String(val) => println!("{}", val),
+                            Value::Float(val) => println!("{}", val),
+                            Value::Bool(val) => println!("{}", val),
+
                         }
                     } else {
                         unimplemented!("not yet '{}'", func_name.value)
@@ -145,8 +151,12 @@ impl Interpreter {
                 Parsed::FuncCall(func_name, func_args) => {
                     self.func_call(func_name, func_args);
                 },
-                 Parsed::VariableReassignment(var_name, var_value) => {
+                Parsed::VariableReassignment(var_name, var_value) => {
                     self.var_reassignment(var_name.clone(), var_value.clone())
+                },
+                Parsed::Conditions(cond) => {
+                    println!("{cond:?}");
+                    unimplemented!()
                 },
                 _ => unimplemented!()
             }

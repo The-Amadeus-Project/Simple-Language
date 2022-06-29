@@ -3,13 +3,35 @@ use crate::lexer::{Token, TokenType};
 use crate::Parsed;
 use crate::parser::{data_token_type_to_types, str_to_types, VarTypes};
 
+
+#[derive(Debug, Clone, PartialEq)]
+enum ArgTypes {
+    Int,
+    Str,
+    Bool,
+    Float,
+    Any,
+    Struct,
+    Variadic(Box<ArgTypes>)
+}
+
 pub struct Checker
 {
     defined_var: HashMap<String, VarTypes>,
     defined_struct: HashMap<String, VarTypes>,
     //                                 args type      return type
-    defined_function: HashMap<String, (Vec<VarTypes>, Vec<VarTypes>)>,
+    defined_function: HashMap<String, (Vec<ArgTypes>, Vec<VarTypes>)>,
     removed: Vec<String>
+}
+
+fn var_types_to_arg_type(var: &VarTypes) -> Option<ArgTypes>{
+    match var {
+        VarTypes::Bool => Some(ArgTypes::Bool),
+        VarTypes::Int =>   Some(ArgTypes::Int),
+        VarTypes::Float => Some(ArgTypes::Float),
+        VarTypes::Str => Some(ArgTypes::Str),
+        _ => None
+    }
 }
 
 impl Checker {
@@ -20,10 +42,7 @@ impl Checker {
             defined_function: HashMap::new(),
             removed: vec![]
         };
-        new.defined_function.insert("iprint".to_string(), (vec![VarTypes::Int], vec![]));
-        new.defined_function.insert("sprint".to_string(), (vec![VarTypes::Str], vec![]));
-        new.defined_function.insert("fprint".to_string(), (vec![VarTypes::Float], vec![]));
-        new.defined_function.insert("bprint".to_string(), (vec![VarTypes::Bool], vec![]));
+        new.defined_function.insert("out".to_string(), (vec![ArgTypes::Any], vec![]));
         new
     }
     fn var_check(&mut self, name: Token, var_type: VarTypes, values: Vec<Token>) -> (String, VarTypes){
@@ -157,7 +176,7 @@ impl Checker {
                 _ => unimplemented!()
             }
         }
-        unimplemented!()
+        // unimplemented!()
     }
 
     fn func_call_check(&mut self, func_name: Token, args: Vec<Token>){
@@ -173,15 +192,41 @@ impl Checker {
             let given_arg = args.get(ind).unwrap();
             let receive_arg = function_referred_to.0.get(ind).unwrap();
             if given_arg.is_data_type(){
-                if  &data_token_type_to_types(&given_arg.token_type).unwrap() != receive_arg {
-                    panic!("Expected {:?} got {:?}, error at line {} char {}", receive_arg, data_token_type_to_types(&given_arg.token_type), given_arg.y, given_arg.x);
+                match receive_arg {
+                    ArgTypes::Int => {
+                        if  data_token_type_to_types(&given_arg.token_type).unwrap() != VarTypes::Int {
+                            panic!("Expected {:?} got {:?}, error at line {} char {}", receive_arg, data_token_type_to_types(&given_arg.token_type), given_arg.y, given_arg.x);
+                        }
+                    },
+                    ArgTypes::Str => {
+                        if  data_token_type_to_types(&given_arg.token_type).unwrap() != VarTypes::Int {
+                            panic!("Expected {:?} got {:?}, error at line {} char {}", receive_arg, data_token_type_to_types(&given_arg.token_type), given_arg.y, given_arg.x);
+                        }
+                    },
+                    ArgTypes::Float => {
+                        if  data_token_type_to_types(&given_arg.token_type).unwrap() != VarTypes::Int {
+                            panic!("Expected {:?} got {:?}, error at line {} char {}", receive_arg, data_token_type_to_types(&given_arg.token_type), given_arg.y, given_arg.x);
+                        }
+                    },
+                    ArgTypes::Bool => {
+                        if  data_token_type_to_types(&given_arg.token_type).unwrap() != VarTypes::Int {
+                            panic!("Expected {:?} got {:?}, error at line {} char {}", receive_arg, data_token_type_to_types(&given_arg.token_type), given_arg.y, given_arg.x);
+                        }
+                    },
+                    ArgTypes::Any => {
+
+                    },
+                    ArgTypes::Variadic(_) => {
+                        unimplemented!()
+                    },
+                    ArgTypes::Struct => {
+                        unimplemented!()
+                    },
                 }
             } else if given_arg.token_type == TokenType::Identifier {
                 if self.defined_var.contains_key(&given_arg.value){
                     let referred = self.defined_var.get(&given_arg.value).unwrap();
-                    if  referred != receive_arg {
-                        panic!("Expected {:?} got {:?}, error at line {} char {}", receive_arg, data_token_type_to_types(&given_arg.token_type), given_arg.y, given_arg.x);
-                    }
+
                 } else {
                     unimplemented!()
                 }
@@ -189,6 +234,12 @@ impl Checker {
                 unimplemented!()
             }
         }
+    }
+    fn condition_check(&mut self, conditions: Vec<(Vec<Parsed>, Vec<String>, (u32, u32))>){
+        for condition in conditions{
+            self.if_check(condition.0, condition.1, condition.2)
+        }
+        unimplemented!()
     }
 
     fn individual_check(&mut self, to_check: Parsed) -> (String, u32) {
@@ -198,8 +249,8 @@ impl Checker {
                 self.defined_var.insert(ret.0.clone(), ret.1);
                 (ret.0, 1)
             },
-            Parsed::If(compound, condition, position) => {
-                self.if_check(compound, condition, position);
+            Parsed::Conditions(conditions) => {
+                self.condition_check(conditions);
                ("".to_string(), 0)
             },
             Parsed::FuncCall(FuncName, Args) => {

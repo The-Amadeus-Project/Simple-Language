@@ -33,9 +33,9 @@ fn token_type_to_parse_type(token: & Token) -> Option<ParseTypes> {
 fn var_types_to_parse_type(token: &VarTypes) -> Option<ParseTypes> {
     match token {
         VarTypes::Bool => Some(ParseTypes::Bool),
-        VarTypes::Bool => Some(ParseTypes::Int),
-        VarTypes::Bool => Some(ParseTypes::Float),
-        VarTypes::Bool => Some(ParseTypes::String),
+        VarTypes::Int => Some(ParseTypes::Int),
+        VarTypes::Float => Some(ParseTypes::Float),
+        VarTypes::Str => Some(ParseTypes::String),
         _ => None
     }
 }

@@ -161,6 +161,7 @@ impl Interpreter {
                         _ => unimplemented!()
                     }
                 }
+              break
             }
         }
 

@@ -1,3 +1,5 @@
+extern crate core;
+
 use crate::lexer::lexer_test;
 use crate::parser::Parsed;
 

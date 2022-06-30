@@ -290,7 +290,7 @@ impl Lexer {
                         self.add_float(unknown_length.clone());
                         float = false;
                     } else {
-                        panic!("what? how?! at line {} char {}", self.y, self.tok_start_y);
+                        panic!("what? how?! at line {} char {}", self.tok_start_y, self.tok_start_x);
                     }
                     num_on = false;
                     unknown_length_being_used = false;
@@ -319,28 +319,28 @@ impl Lexer {
                         {
                             let next = self.get_next_char();
                             if !next.is_some() {
-                                panic!("Expected Continuation at line {} char {}", self.y, self.tok_start_y);
+                                panic!("Expected Continuation at line {} char {}", self.tok_start_y, self.tok_start_x);
                             }
                             let next_char = next.unwrap();
                             if next_char == '=' {
                                 self.add_special_bare(TokenType::ComparisonOperation, "==".to_string());
                                 self.next_char();
                             } else {
-                               panic!("Please use assignment arrow '<-',  at line {} char {}", self.y, self.tok_start_y);
+                               panic!("Please use assignment arrow '<-',  at line {} char {}", self.tok_start_y, self.tok_start_x);
                             }
                         },
                     '!' =>
                         {
                             let next = self.get_next_char();
                             if !next.is_some() {
-                                panic!("Expected Continuation at line {} char {}", self.y, self.tok_start_y);
+                                panic!("Expected Continuation at line {} char {}", self.tok_start_y, self.tok_start_x);
                             }
                             let next_char = next.unwrap();
                             if next_char == '=' {
                                 self.add_special_bare(TokenType::ComparisonOperation, "!=".to_string());
                                 self.next_char();
                             } else {
-                                panic!("Unexpected '{}',  at line {} char {}", self.current_char, self.y, self.tok_start_y);
+                                panic!("Unexpected '{}',  at line {} char {}", self.current_char, self.tok_start_y, self.tok_start_x);
                             }
                         },
                     '+' => self.add_special_bare(TokenType::MathOperation, "+".to_string()),
@@ -356,7 +356,7 @@ impl Lexer {
                         {
                             let next = self.get_next_char();
                             if !next.is_some() {
-                                panic!("Expected Continuation at line {} char {}", self.y, self.tok_start_y);
+                                panic!("Expected Continuation at line {} char {}", self.tok_start_y, self.tok_start_x);
                             }
                             let next_char = next.unwrap();
                             if next_char == '=' {
@@ -414,6 +414,8 @@ impl Lexer {
                 "false" => self.add_special_bare(TokenType::Boolean, "false".to_string()),
                 _ => {self.add_identifier(unknown_length.clone())}
             }
+        } else if str_on {
+            panic!("unclosed string at line {} char {}", self.tok_start_y, self.tok_start_x);
         }
         self.add_special(TokenType::EndOfFile);
         self.current_tokens.clone()

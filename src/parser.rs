@@ -36,7 +36,7 @@ pub enum Parsed {
     VariableReassignment(Token, Vec<Token>),
     Program(Vec<Parsed>),
     FuncCall(Token, Vec<Token>),
-    Conditions(Vec<(Vec<Parsed>, Vec<String>, (u32, u32))>),
+    Conditions(Vec<(Vec<Parsed>, Vec<Token>, (u32, u32))>),
     // ElseIf(),
     // Else(),
 }
@@ -117,10 +117,10 @@ impl Parser {
     fn add_func_call(&mut self, func_name: Token, args: Vec<Token>){
         self.add_to_top_of_stack(Parsed::FuncCall(func_name, args))
     }
-    fn add_if(&mut self, condition: Vec<String>, loc: (u32, u32)){
+    fn add_if(&mut self, condition: Vec<Token>, loc: (u32, u32)){
         self.scope.push(Parsed::Conditions(vec![(vec![], condition, loc)]))
     }
-    fn add_else(&mut self, condition: Vec<String>, loc: (u32, u32)){
+    fn add_else(&mut self, condition: Vec<Token>, loc: (u32, u32)){
         let ind = self.scope.len() - 1;
         let d = &mut self.scope[ind];
         match d {
@@ -193,7 +193,7 @@ impl Parser {
                     } else if self.current_token.token_type == TokenType::CurlyBracketOpen {
                         break
                     } else {
-                        condition.push(self.current_token.true_value())
+                        condition.push(self.current_token.clone())
                     }
                 }
                 self.add_if(condition, if_pos);
@@ -211,12 +211,16 @@ impl Parser {
                         } else if self.current_token.token_type == TokenType::CurlyBracketOpen {
                             break
                         } else {
-                            condition.push(self.current_token.true_value())
+                            condition.push(self.current_token.clone())
                         }
                     }
                     self.add_else(condition, if_pos);
                 } else {
-                    unimplemented!()
+                    let if_pos = (self.current_token.x, self.current_token.y);
+                    if self.current_token.token_type != TokenType::CurlyBracketOpen {
+                        self.error(format!("Expected start of scope got '{:?}' instead", &self.current_token.token_type))
+                    }
+                    self.add_else(vec![Token::new(TokenType::Boolean, "true".to_string())], if_pos);
                 }
 
             }

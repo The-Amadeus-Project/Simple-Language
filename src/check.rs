@@ -179,8 +179,16 @@ impl TypeEvaluator {
                 if self.defined_var.contains_key(&token.value){
                     let var = var_types_to_parse_type(self.defined_var.get(&token.value).unwrap()).unwrap();
                     to_eval.push((var, token.x, token.y));
+                } else if self.defined_function.contains_key(&token.value) {
+                    let referred_function = self.defined_function.get(&token.value).unwrap();
+                    if referred_function.1.len() > 0 {
+                        unimplemented!()
+                    } else {
+
+                    }
+
                 } else {
-                    unimplemented!()
+                    unimplemented!("{:?}", token)
                 }
             }
         }

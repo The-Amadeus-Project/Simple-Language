@@ -1,8 +1,6 @@
-str name <- "jacky chan";
-if name == "jacky chan"  {
-    out("oh him!");
-} else if name == "jack chan" {
-    out("who?");
+
+if 1 > 0 {
+    out("shix");
 } else {
-    out("idk");
+    out("not!");
 }

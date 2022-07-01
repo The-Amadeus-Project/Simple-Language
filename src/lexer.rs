@@ -178,7 +178,7 @@ impl Lexer {
     pub fn add_identifier(&mut self, value: String){
         self.add_base(TokenType::Identifier, value);
     }
-    pub fn lex(&mut self) -> Vec<Token> {
+    fn lex(&mut self) -> Vec<Token> {
         /*
         hierarchy
 
@@ -343,6 +343,7 @@ impl Lexer {
                                 panic!("Unexpected '{}',  at line {} char {}", self.current_char, self.tok_start_y, self.tok_start_x);
                             }
                         },
+                    '%' => self.add_special_bare(TokenType::MathOperation, "%".to_string()),
                     '+' => self.add_special_bare(TokenType::MathOperation, "+".to_string()),
                     '-' => self.add_special_bare(TokenType::MathOperation, "-".to_string()),
                     '/' => self.add_special_bare(TokenType::MathOperation, "/".to_string()),

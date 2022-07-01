@@ -1,24 +1,23 @@
 use std::collections::HashMap;
-use eval::eval;
 use crate::{Parsed, parser};
 use crate::check::Checker;
 use crate::lexer::{Token, TokenType};
 use crate::parser::VarTypes;
 
 
-fn substring(str: String, start: i32, end: i32) ->  Option<String>
+fn substring(str: String, start_index: i32, end_index: i32) ->  Option<String>
 {
-    if end <= start
+    if end_index <= start_index
     {
         return None;
     }
-    let ss = (&str[(start as usize)..(end as usize)]).to_string();
-    Option::from(ss)
+    let substring = (&str[(start_index as usize)..(end_index as usize)]).to_string();
+    Option::from(substring)
 
 }
 
 #[derive(PartialEq, Debug, Clone)]
-enum Value {
+pub enum Value {
     Int(i128),
     String(String),
     Bool(bool),
@@ -27,9 +26,9 @@ enum Value {
 
 pub struct Interpreter {
     program: Vec<Parsed>,
-    defined_var: HashMap<String, (VarTypes, Value)>,
-    defined_func: HashMap<String, (u32, Vec<VarTypes>)>,
-    built_in_func: Vec<String>,
+    defined_variable: HashMap<String, (VarTypes, Value)>,
+    defined_function: HashMap<String, (u32, Vec<VarTypes>)>,
+    built_in_function: Vec<String>,
     defined_struct: HashMap<String, ()>
 }
 
@@ -38,63 +37,42 @@ impl Interpreter {
         if let Parsed::Program(program) = prog  {
             Self {
                 program,
-                defined_var: HashMap::new(),
-                defined_func: HashMap::new(),
-                built_in_func: vec!["out".to_string(), ],
+                defined_variable: HashMap::new(),
+                defined_function: HashMap::new(),
+                built_in_function: vec!["out".to_string(), ],
                 defined_struct: HashMap::new()
             }
         } else {
-            panic!("huh? what?")
+            panic!("huh? what? Expected a parsed program")
         }
     }
-    fn evaluate(&self, eval: Vec<Token>) -> String {
-        let mut to_eval = "".to_string();
-        let mut ind = -1;
-        loop {
-            ind += 1;
-            let initial: Option<&Token> =  eval.get(ind as usize);
-            if initial.is_none(){
-                break
-            }
-            let mut tok: Token = initial.unwrap().clone();
-
-            if tok.token_type == TokenType::MathOperation || tok.token_type == TokenType::ComparisonOperation || tok.is_data_type() {
-                to_eval += &tok.true_value()
-            } else if self.defined_var.contains_key(&tok.value){
-                let d = self.defined_var.get(&tok.value).unwrap().1.clone();
-                match d {
-                    Value::String(val) => to_eval += &*("\"".to_string() + &val + &*"\"".to_string()),
-                    Value::Int(val) => to_eval += &val.to_string(),
-                    Value::Float(val) => to_eval += &val.to_string(),
-                    Value::Bool(val) => to_eval += &val.to_string(),
-                }
-            } else {
-                unimplemented!("{:?}", tok)
-            }
+    fn evaluate(&self, to_evaluate: Vec<Token>) -> Value {
+        for tok in to_evaluate {
+            println!()
         }
-        eval::eval(&to_eval).expect("sir! you got a shitty error").to_string()
+        unimplemented!()
     }
-    fn var_assign_template(&mut self, var_name: Token, var_type: VarTypes, var_value: Vec<Token>) -> (String, u32){
-        match var_type {
+    fn var_assign_template(&mut self, variable_name: Token, variable_type: VarTypes, variable_value: Vec<Token>) -> (String, u32){
+        match variable_type {
             VarTypes::Str => {
-                let ret_eval = self.evaluate(var_value).parse::<String>().expect("sir! you got another shitty error");
-                self.defined_var.insert(var_name.value.clone(), (var_type, Value::String(substring(ret_eval.clone(), 1, (&ret_eval.len() - 1) as i32).unwrap())));
-                (var_name.value.clone(), 1)
+                let ret_eval = self.evaluate(variable_value);
+                self.defined_variable.insert(variable_name.value.clone(), (variable_type, ret_eval));
+                (variable_name.value.clone(), 1)
             },
             VarTypes::Int => {
-                let ret_eval = self.evaluate(var_value).parse::<i128>().expect("sir! you got another shitty error");
-                self.defined_var.insert(var_name.value.clone(), (var_type, Value::Int(ret_eval)));
-                (var_name.value.clone(), 1)
+                let ret_eval = self.evaluate(variable_value);
+                self.defined_variable.insert(variable_name.value.clone(), (variable_type, ret_eval));
+                (variable_name.value.clone(), 1)
             },
             VarTypes::Float => {
-                let ret_eval = self.evaluate(var_value).parse::<f64>().expect("sir! you got another shitty error");
-                self.defined_var.insert(var_name.value.clone(), (var_type, Value::Float(ret_eval)));
-                (var_name.value.clone(), 1)
+                let ret_eval = self.evaluate(variable_value);
+                self.defined_variable.insert(variable_name.value.clone(), (variable_type, ret_eval));
+                (variable_name.value.clone(), 1)
             },
             VarTypes::Bool => {
-                let ret_eval = self.evaluate(var_value).parse::<bool>().expect("sir! you got another shitty error");
-                self.defined_var.insert(var_name.value.clone(), (var_type, Value::Bool(ret_eval)));
-                (var_name.value.clone(), 1)
+                let ret_eval = self.evaluate(variable_value);
+                self.defined_variable.insert(variable_name.value.clone(), (variable_type, ret_eval));
+                (variable_name.value.clone(), 1)
             },
             VarTypes::Struct => {
                 unimplemented!()
@@ -102,9 +80,9 @@ impl Interpreter {
         }
     }
     fn var_reassignment(&mut self, var_name: Token, var_value: Vec<Token>){
-        let mut reassign = self.defined_var.get(&var_name.value).unwrap().clone();
-        let var_type = reassign.0.clone();
-        self.var_assign_template(var_name, var_type, var_value);
+        let mut referred_variable = self.defined_variable.get(&var_name.value).unwrap().clone();
+        let referred_variable_type = referred_variable.0.clone();
+        self.var_assign_template(var_name, referred_variable_type, var_value);
     }
     fn var_assignment(&mut self, var_name: Token, var_type: VarTypes, var_value: Vec<Token>) -> (String, u32){
         self.var_assign_template(var_name, var_type, var_value)
@@ -112,14 +90,14 @@ impl Interpreter {
     fn built_in_funcs(&mut self, func_name: Token, func_args: Vec<Token>) -> Option<Value>{
         match &*func_name.value {
             "out" => {
-                let arg = func_args[0 as usize].clone();
-                if arg.is_data_type(){
-                    println!("{}", arg.value)
-                } else if arg.token_type == TokenType::Identifier {
-                    let arg_name = arg.value;
-                    if self.defined_var.contains_key(&arg_name){
-                        let referred = self.defined_var.get(&arg_name).unwrap();
-                        match &referred.1 {
+                let function_argument = func_args[0 as usize].clone();
+                if function_argument.is_data_type(){
+                    println!("{}", function_argument.value)
+                } else if function_argument.token_type == TokenType::Identifier {
+                    let argument_name = function_argument.value;
+                    if self.defined_variable.contains_key(&argument_name){
+                        let referred_variable = self.defined_variable.get(&argument_name).unwrap();
+                        match &referred_variable.1 {
                             Value::Int(val) => println!("{}", val),
                             Value::String(val) => println!("{}", val),
                             Value::Float(val) => println!("{}", val),
@@ -138,26 +116,32 @@ impl Interpreter {
         None
     }
     fn func_call(&mut self, func_name: Token, func_args: Vec<Token>){
-        if self.built_in_func.contains(&func_name.value){
+        if self.built_in_function.contains(&func_name.value){
             self.built_in_funcs(func_name, func_args);
         } else {
             unimplemented!()
         }
     }
     fn conditions(&mut self, cond: Vec<(Vec<Parsed>, Vec<Token>, (u32, u32))>){
-        for block in cond {
-            let res = self.evaluate(block.1).parse::<bool>().expect("typ checker failed");
-            if res {
-                let mut definitions = vec![];
-                for statement in block.0  {
+        for statement in cond {
+            let return_of_evaluating_condition = self.evaluate(statement.1);
+            let result_of_evaluating_condition: bool;
+            if let Value::Bool(result) = return_of_evaluating_condition {
+                result_of_evaluating_condition = result;
+            } else {
+                panic!("its not a boolean")
+            }
+            if result_of_evaluating_condition {
+                let mut scope = vec![];
+                for statement in statement.0  {
                     let ret = self.individuals(statement);
                     if ret.1 != 0 {
-                       definitions.push(ret)
+                       scope.push(ret)
                     }
                 }
-                for defined in definitions {
+                for defined in scope {
                     match defined.1 {
-                        1 => { self.defined_var.remove(&defined.0).expect("huh?");},
+                        1 => { self.defined_variable.remove(&defined.0).expect("huh?");},
                         _ => unimplemented!()
                     }
                 }
@@ -169,8 +153,8 @@ impl Interpreter {
     fn individuals(&mut self, part: Parsed) -> (String, u32){
         match part {
                 Parsed::VariableAssignment(var_name, var_type, var_value) => {
-                    let d = self.var_assignment(var_name.clone(), var_type.clone(), var_value.clone());
-                    ("".to_string(), 0)
+                    let (variable_name, variable_type) = self.var_assignment(var_name.clone(), var_type.clone(), var_value.clone());
+                    (variable_name, variable_type)
                 },
                 Parsed::FuncCall(func_name, func_args) => {
                     self.func_call(func_name, func_args);

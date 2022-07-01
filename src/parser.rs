@@ -51,18 +51,20 @@ pub struct Parser {
     lexer: Lexer,
     current_token: Token,
     to_parse_tokens: Vec<Token>,
-    scope: Vec<Parsed>
+    scope: Vec<Parsed>,
+    debug: bool
 }
 
 impl Parser {
-    pub fn new() -> Self{
+    pub fn new(debug: bool) -> Self{
         Self {
             index: -1,
             run: true,
             lexer: Lexer::new(),
             current_token: Token::new(TokenType::NullForParser, "".to_string()),
             to_parse_tokens: vec![],
-            scope: vec![Parsed::Program(vec![])]
+            scope: vec![Parsed::Program(vec![])],
+            debug
         }
     }
     fn next_token(&mut self) -> bool {
@@ -84,11 +86,13 @@ impl Parser {
     }
     pub fn parse_text(&mut self, text: String) -> Parsed{
         self.to_parse_tokens = self.lexer.lex_text(text);
-        println!("--------------------------------------------------------");
-        for tok in &self.to_parse_tokens {
-            println!("{:?}", tok)
+        if self.debug {
+            println!("--------------------------------------------------------");
+            for tok in &self.to_parse_tokens {
+                println!("{:?}", tok)
+            }
+            println!("--------------------------------------------------------");
         }
-        println!("--------------------------------------------------------");
         self.parse()
     }
     fn error(&self, error: String){
@@ -176,9 +180,9 @@ impl Parser {
                     }
 
                 }
-                if variable_values_for_evaluation.len() == 0 {
-                    println!("WANING! uninitialized but declared {}", variable_name.value)
-                }
+                // if variable_values_for_evaluation.len() == 0 {
+                //     println!("WANING! uninitialized but declared {}", variable_name.value)
+                // }
                 self.add_var(variable_name, variable_type, variable_values_for_evaluation)
             }
             else if self.current_token.token_type == TokenType::If {
@@ -284,7 +288,6 @@ impl Parser {
             else if self.current_token.token_type == TokenType::EndOfFile { }
             else if self.current_token.token_type == TokenType::CurlyBracketClose {}
             else {
-                println!("{:?}",self.get_next_token().unwrap().token_type);
                 self.error(format!("Unknown! {:?}", self.current_token))
             }
         }

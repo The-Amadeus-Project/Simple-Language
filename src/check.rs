@@ -382,8 +382,39 @@ impl Checker {
                 }
             } else if given_argument.token_type == TokenType::Identifier {
                 if self.defined_var.contains_key(&given_argument.value){
-                    let referred_variable = self.defined_var.get(&given_argument.value).unwrap();
-                    unimplemented!()
+                    let referred_variable_type = self.defined_var.get(&given_argument.value).unwrap().clone();
+
+                    match expected_argument_type {
+                    ArgTypes::Int => {
+                        if  referred_variable_type != VarTypes::Int {
+                            panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
+                        }
+                    },
+                    ArgTypes::Str => {
+                        if  referred_variable_type != VarTypes::Str {
+                            panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
+                        }
+                    },
+                    ArgTypes::Float => {
+                        if  referred_variable_type != VarTypes::Float {
+                            panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
+                        }
+                    },
+                    ArgTypes::Bool => {
+                        if  referred_variable_type != VarTypes::Bool {
+                            panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
+                        }
+                    },
+                    ArgTypes::Any => {
+
+                    },
+                    ArgTypes::Variadic(_) => {
+                        unimplemented!()
+                    },
+                    ArgTypes::Struct => {
+                        unimplemented!()
+                    },
+                }
                 } else {
                     unimplemented!()
                 }

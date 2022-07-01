@@ -1,6 +1,8 @@
 
-if 1 > 0 { // shit
-    out("shix");
+str d <- "123";
+d <- d + " 123";
+if d == "123 123"{
+    out("yey");
 } else {
-    out("not!");
+    out("no");
 }

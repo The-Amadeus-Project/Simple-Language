@@ -75,8 +75,21 @@ impl Interpreter {
         for current_token in to_evaluate {
             if current_token.is_data_type() || current_token.token_type == TokenType::ComparisonOperation || current_token.token_type == TokenType::MathOperation {
                 to_send_to_eval += &*current_token.true_value();
+            } else if current_token.token_type == TokenType::Identifier {
+                if self.defined_variable.contains_key(&current_token.value){
+                    let referred_variable = self.defined_variable.get(&current_token.value).unwrap();
+                    match referred_variable.value.clone() {
+                        Value::String(value) => to_send_to_eval += &*format!("\"{}\"", value),
+                        Value::Int(value) => to_send_to_eval += &*value.to_string(),
+                        Value::Bool(value) => to_send_to_eval += &*value.to_string(),
+                        Value::Float(value) => to_send_to_eval += &*value.to_string(),
+                        _ => unimplemented!()
+                    }
+                } else {
+                    unimplemented!()
+                }
             } else {
-                unimplemented!()
+                unimplemented!("{:?}", current_token)
             }
         }
         eval_string(to_send_to_eval).true_value()
@@ -85,7 +98,7 @@ impl Interpreter {
         match variable_type {
             VarTypes::Str => {
                 let ret_eval = self.evaluate(variable_value);
-                self.defined_variable.insert(variable_name.value.clone(), Variable::new(variable_name.value.clone(), Value::String(ret_eval), variable_type));
+                self.defined_variable.insert(variable_name.value.clone(), Variable::new(variable_name.value.clone(), Value::String(substring(ret_eval.clone(), 1, (ret_eval.len() - 1) as i32).unwrap()), variable_type));
                 (variable_name.value.clone(), 1)
             },
             VarTypes::Int => {

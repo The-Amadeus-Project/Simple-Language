@@ -1,9 +1,33 @@
 use std::collections::HashMap;
 use crate::{Parsed, parser};
-use crate::check::Checker;
+use crate::check::{ArgTypes, Checker};
 use crate::lexer::{Token, TokenType};
 use crate::parser::VarTypes;
+use crate::util::eval::eval_string;
 
+
+struct Variable {
+    name: String,
+    value: Value,
+    var_type: VarTypes
+}
+
+impl Variable {
+    fn new(name: String, value: Value, var_type: VarTypes) -> Self {
+        Self {
+            name,
+            value,
+            var_type
+        }
+    }
+}
+
+struct Functions {
+    statement: Parsed,
+    name: String,
+    arguments: Vec<(String, VarTypes)>,
+    return_type: Vec<VarTypes>
+}
 
 fn substring(str: String, start_index: i32, end_index: i32) ->  Option<String>
 {
@@ -26,7 +50,7 @@ pub enum Value {
 
 pub struct Interpreter {
     program: Vec<Parsed>,
-    defined_variable: HashMap<String, (VarTypes, Value)>,
+    defined_variable: HashMap<String, Variable>,
     defined_function: HashMap<String, (u32, Vec<VarTypes>)>,
     built_in_function: Vec<String>,
     defined_struct: HashMap<String, ()>
@@ -46,32 +70,37 @@ impl Interpreter {
             panic!("huh? what? Expected a parsed program")
         }
     }
-    fn evaluate(&self, to_evaluate: Vec<Token>) -> Value {
-        for tok in to_evaluate {
-            println!()
+    fn evaluate(&self, to_evaluate: Vec<Token>) -> String {
+        let mut to_send_to_eval = "".to_string();
+        for current_token in to_evaluate {
+            if current_token.is_data_type() || current_token.token_type == TokenType::ComparisonOperation || current_token.token_type == TokenType::MathOperation {
+                to_send_to_eval += &*current_token.true_value();
+            } else {
+                unimplemented!()
+            }
         }
-        unimplemented!()
+        eval_string(to_send_to_eval).true_value()
     }
     fn var_assign_template(&mut self, variable_name: Token, variable_type: VarTypes, variable_value: Vec<Token>) -> (String, u32){
         match variable_type {
             VarTypes::Str => {
                 let ret_eval = self.evaluate(variable_value);
-                self.defined_variable.insert(variable_name.value.clone(), (variable_type, ret_eval));
+                self.defined_variable.insert(variable_name.value.clone(), Variable::new(variable_name.value.clone(), Value::String(ret_eval), variable_type));
                 (variable_name.value.clone(), 1)
             },
             VarTypes::Int => {
-                let ret_eval = self.evaluate(variable_value);
-                self.defined_variable.insert(variable_name.value.clone(), (variable_type, ret_eval));
+                let ret_eval = self.evaluate(variable_value).parse::<i128>().unwrap();
+                self.defined_variable.insert(variable_name.value.clone(), Variable::new(variable_name.value.clone(), Value::Int(ret_eval), variable_type));
                 (variable_name.value.clone(), 1)
             },
             VarTypes::Float => {
-                let ret_eval = self.evaluate(variable_value);
-                self.defined_variable.insert(variable_name.value.clone(), (variable_type, ret_eval));
+                let ret_eval = self.evaluate(variable_value).parse::<f64>().unwrap();
+                self.defined_variable.insert(variable_name.value.clone(), Variable::new(variable_name.value.clone(), Value::Float(ret_eval), variable_type));
                 (variable_name.value.clone(), 1)
             },
             VarTypes::Bool => {
-                let ret_eval = self.evaluate(variable_value);
-                self.defined_variable.insert(variable_name.value.clone(), (variable_type, ret_eval));
+                let ret_eval = self.evaluate(variable_value).parse::<bool>().unwrap();
+                self.defined_variable.insert(variable_name.value.clone(), Variable::new(variable_name.value.clone(), Value::Bool(ret_eval), variable_type));
                 (variable_name.value.clone(), 1)
             },
             VarTypes::Struct => {
@@ -81,7 +110,7 @@ impl Interpreter {
     }
     fn var_reassignment(&mut self, var_name: Token, var_value: Vec<Token>){
         let mut referred_variable = self.defined_variable.get(&var_name.value).unwrap().clone();
-        let referred_variable_type = referred_variable.0.clone();
+        let referred_variable_type = referred_variable.var_type.clone();
         self.var_assign_template(var_name, referred_variable_type, var_value);
     }
     fn var_assignment(&mut self, var_name: Token, var_type: VarTypes, var_value: Vec<Token>) -> (String, u32){
@@ -97,7 +126,7 @@ impl Interpreter {
                     let argument_name = function_argument.value;
                     if self.defined_variable.contains_key(&argument_name){
                         let referred_variable = self.defined_variable.get(&argument_name).unwrap();
-                        match &referred_variable.1 {
+                        match &referred_variable.value {
                             Value::Int(val) => println!("{}", val),
                             Value::String(val) => println!("{}", val),
                             Value::Float(val) => println!("{}", val),
@@ -124,14 +153,8 @@ impl Interpreter {
     }
     fn conditions(&mut self, cond: Vec<(Vec<Parsed>, Vec<Token>, (u32, u32))>){
         for statement in cond {
-            let return_of_evaluating_condition = self.evaluate(statement.1);
-            let result_of_evaluating_condition: bool;
-            if let Value::Bool(result) = return_of_evaluating_condition {
-                result_of_evaluating_condition = result;
-            } else {
-                panic!("its not a boolean")
-            }
-            if result_of_evaluating_condition {
+            let return_of_evaluating_condition = self.evaluate(statement.1).parse::<bool>().unwrap();
+            if return_of_evaluating_condition {
                 let mut scope = vec![];
                 for statement in statement.0  {
                     let ret = self.individuals(statement);

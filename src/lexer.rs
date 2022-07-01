@@ -228,7 +228,17 @@ impl Lexer {
                 }
 
             } else if str_on || comment_on {
-                unknown_length += &self.current_char.to_string();
+                if self.current_char == '\n' {
+                    if str_on {
+                        panic!("unclosed string at line {} char {}", self.tok_start_y, self.tok_start_x);
+                    } else {
+                        comment_on = false;
+                        unknown_length_being_used = false;
+                        unknown_length = "".to_string();
+                    }
+                } else {
+                    unknown_length += &self.current_char.to_string();
+                }
 
             } else if num.contains(&self.current_char) && !id_on {
                 if num_on {
@@ -346,7 +356,26 @@ impl Lexer {
                     '%' => self.add_special_bare(TokenType::MathOperation, "%".to_string()),
                     '+' => self.add_special_bare(TokenType::MathOperation, "+".to_string()),
                     '-' => self.add_special_bare(TokenType::MathOperation, "-".to_string()),
-                    '/' => self.add_special_bare(TokenType::MathOperation, "/".to_string()),
+                    '/' =>
+                        {
+                            let next = self.get_next_char();
+                            if !next.is_some() {
+                                panic!("Expected Continuation at line {} char {}", self.tok_start_y, self.tok_start_x);
+                            }
+                            let next_char = next.unwrap();
+                            if next_char == '/' {
+                                self.pos_starter();
+                                comment_on = true;
+
+                                if unknown_length_being_used {
+                                    panic!("shit something went wrong! at line {} char {}", self.y, self.tok_start_y);
+                                }
+
+                                unknown_length_being_used = true;
+                            } else {
+                                 self.add_special_bare(TokenType::MathOperation, "/".to_string())
+                            }
+                    },
                     '*' => self.add_special_bare(TokenType::MathOperation, "*".to_string()),
                     ';' => self.add_special(TokenType::EndLine),
                     '.' => self.add_special(TokenType::DirectMemberSelection),

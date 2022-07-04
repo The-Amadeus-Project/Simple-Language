@@ -385,38 +385,41 @@ impl Checker {
                     let referred_variable_type = self.defined_var.get(&given_argument.value).unwrap().clone();
 
                     match expected_argument_type {
-                    ArgTypes::Int => {
-                        if  referred_variable_type != VarTypes::Int {
-                            panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
-                        }
-                    },
-                    ArgTypes::Str => {
-                        if  referred_variable_type != VarTypes::Str {
-                            panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
-                        }
-                    },
-                    ArgTypes::Float => {
-                        if  referred_variable_type != VarTypes::Float {
-                            panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
-                        }
-                    },
-                    ArgTypes::Bool => {
-                        if  referred_variable_type != VarTypes::Bool {
-                            panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
-                        }
-                    },
-                    ArgTypes::Any => {
+                        ArgTypes::Int => {
+                            if  referred_variable_type != VarTypes::Int {
+                                panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
+                            }
+                        },
+                        ArgTypes::Str => {
+                            if  referred_variable_type != VarTypes::Str {
+                                panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
+                            }
+                        },
+                        ArgTypes::Float => {
+                            if  referred_variable_type != VarTypes::Float {
+                                panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
+                            }
+                        },
+                        ArgTypes::Bool => {
+                            if  referred_variable_type != VarTypes::Bool {
+                                panic!("Expected {:?} got {:?}, error at line {} char {}", expected_argument_type, data_token_type_to_types(&given_argument.token_type), given_argument.y, given_argument.x);
+                            }
+                        },
+                        ArgTypes::Any => {
 
-                    },
-                    ArgTypes::Variadic(_) => {
-                        unimplemented!()
-                    },
-                    ArgTypes::Struct => {
-                        unimplemented!()
-                    },
+                        },
+                        ArgTypes::Variadic(_) => {
+                            unimplemented!()
+                        },
+                        ArgTypes::Struct => {
+                            unimplemented!()
+                        },
+                    }
+                } else if self.removed.contains(&given_argument.value) {
+                    panic!("The Variable '{}' is out of scope or undefined, at line {} char {}", given_argument.value.clone(), given_argument.y, given_argument.x);
                 }
-                } else {
-                    unimplemented!()
+                else {
+                    unimplemented!("{:?}", given_argument)
                 }
             } else {
                 unimplemented!()
